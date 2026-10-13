@@ -40,3 +40,4 @@ mvn spring-boot:run
 ```
 
 Access the portal in your browser at: `http://localhost:8080`
+### Status: Release-Ready Baseline v1.0.0 
