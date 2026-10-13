@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Details - Loan Tracking Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card-custom { border-radius: 10px; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        .timeline { border-left: 3px solid #0d6efd; padding-left: 20px; margin-left: 10px; }
+        .timeline-item { position: relative; margin-bottom: 25px; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -27px;
+            top: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: #0d6efd;
+            border: 2px solid white;
+        }
+        .badge-SUBMITTED { background-color: #0dcaf0; color: #000; }
+        .badge-DOCUMENT_VERIFIED { background-color: #6f42c1; color: #fff; }
+        .badge-UNDERWRITING { background-color: #ffc107; color: #000; }
+        .badge-APPROVED { background-color: #198754; color: #fff; }
+        .badge-REJECTED { background-color: #dc3545; color: #fff; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" th:href="@{/dashboard}">🏦 LoanTrack Portal</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" th:href="@{/dashboard}" id="navDashboard">Dashboard</a>
+                <a class="nav-link" th:href="@{/apply}" id="navApply">New Application</a>
+                <a class="nav-link" th:href="@{/alerts}" id="navAlerts">Alerts & Exceptions</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <a th:href="@{/dashboard}" class="btn btn-outline-secondary btn-sm mb-2">&larr; Back to Dashboard</a>
+                <h2 class="fw-bold" id="detailHeading">
+                    Application: <span th:text="${loan.applicationId}" class="text-primary">LOAN-1001</span>
+                </h2>
+            </div>
+            <div>
+                <span class="badge fs-6 p-2" th:classappend="'badge-' + ${loan.currentStatus}" 
+                      th:text="${loan.currentStatus}" id="currentStatusBadge">SUBMITTED</span>
+            </div>
+        </div>
+
+        <!-- Rejection Alert Banner if applicable -->
+        <div th:if="${loan.currentStatus == 'REJECTED'}" class="alert alert-danger mb-4" id="rejectionBanner">
+            <h5 class="alert-heading fw-bold">⚠️ Application Flagged / Rejected</h5>
+            <p class="mb-0"><strong>Reason:</strong> <span th:text="${loan.rejectionReason}">Credit score insufficient</span></p>
+        </div>
+
+        <div class="row">
+            <!-- Left Column: Borrower Details & Status Update Form -->
+            <div class="col-lg-6 mb-4">
+                <div class="card card-custom p-4 mb-4">
+                    <h5 class="fw-bold mb-3 text-secondary">Borrower Profile</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-muted" style="width: 40%;">Applicant Name:</td>
+                            <td class="fw-bold" th:text="${loan.applicantName}" id="detailApplicantName">John Doe</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Email:</td>
+                            <td th:text="${loan.email}" id="detailEmail">john@example.com</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Phone:</td>
+                            <td th:text="${loan.phone}" id="detailPhone">+1-555-0199</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Loan Category:</td>
+                            <td><span class="badge bg-light text-dark border" th:text="${loan.loanType}">PERSONAL</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Requested Amount:</td>
+                            <td class="fw-bold text-success fs-5" th:text="'$' + ${#numbers.formatDecimal(loan.loanAmount, 1, 2)}">$25,000.00</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Submission Date:</td>
+                            <td th:text="${#temporals.format(loan.createdAt, 'yyyy-MM-dd HH:mm')}">2026-10-13 10:00</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Stage Transition / Officer Action Card -->
+                <div class="card card-custom p-4">
+                    <h5 class="fw-bold mb-3 text-secondary">Update Application Stage</h5>
+                    <form th:action="@{/loans/{id}/status(id=${loan.id})}" method="post" id="statusUpdateForm">
+                        <div class="mb-3">
+                            <label for="newStatus" class="form-label font-weight-bold">Advance to Next Stage</label>
+                            <select class="form-select" id="newStatus" name="newStatus" required onchange="toggleRejectionField(this.value)">
+                                <option value="" disabled selected>Select Next Stage</option>
+                                <option value="DOCUMENT_VERIFIED">Document Verified</option>
+                                <option value="UNDERWRITING">Underwriting / Credit Analysis</option>
+                                <option value="APPROVED">Approved</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="rejectionReasonDiv" style="display: none;">
+                            <label for="rejectionReason" class="form-label text-danger font-weight-bold">Rejection Reason</label>
+                            <input type="text" class="form-control border-danger" id="rejectionReason" name="rejectionReason" 
+                                   placeholder="e.g. CIBIL score below 650, Missing tax returns">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="remarks" class="form-label">Reviewer Remarks / Notes</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="2" 
+                                      placeholder="Enter verification notes or comments..." required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="updateStatusBtn">Update Stage & Log Event</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Status Drill-Down Audit Timeline -->
+            <div class="col-lg-6 mb-4">
+                <div class="card card-custom p-4">
+                    <h5 class="fw-bold mb-3 text-secondary">Audit Event Timeline (Status Drill-Down)</h5>
+                    <p class="text-muted small mb-4">Immutable log of all lifecycle transitions and timestamped officer notes.</p>
+                    
+                    <div class="timeline" id="eventTimeline">
+                        <div class="timeline-item" th:each="event : ${events}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge" th:classappend="'badge-' + ${event.eventStage}" th:text="${event.eventStage}">SUBMITTED</span>
+                                <small class="text-muted" th:text="${#temporals.format(event.eventTimestamp, 'yyyy-MM-dd HH:mm:ss')}">2026-10-13 10:00:00</small>
+                            </div>
+                            <p class="mt-2 mb-0 text-secondary" th:text="${event.remarks}">Application submitted and registered.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleRejectionField(val) {
+            const div = document.getElementById('rejectionReasonDiv');
+            const input = document.getElementById('rejectionReason');
+            if (val === 'REJECTED') {
+                div.style.display = 'block';
+                input.required = true;
+            } else {
+                div.style.display = 'none';
+                input.required = false;
+            }
+        }
+    </script>
+</body>
+</html>

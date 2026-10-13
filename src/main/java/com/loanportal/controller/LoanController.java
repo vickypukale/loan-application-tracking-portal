@@ -41,4 +41,31 @@ public class LoanController {
                 "Loan Application registered successfully! Generated Application ID: " + created.getApplicationId());
         return "redirect:/dashboard";
     }
+
+    @GetMapping("/loans/{id}")
+    public String viewLoanDetails(@PathVariable("id") Long id, Model model) {
+        LoanApplication loan = loanService.getApplicationById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid loan ID: " + id));
+        model.addAttribute("loan", loan);
+        model.addAttribute("events", loanService.getEventsForApplication(loan));
+        return "details";
+    }
+
+    @PostMapping("/loans/{id}/status")
+    public String updateLoanStatus(@PathVariable("id") Long id,
+                                   @RequestParam("newStatus") String newStatus,
+                                   @RequestParam("remarks") String remarks,
+                                   @RequestParam(value = "rejectionReason", required = false) String rejectionReason,
+                                   RedirectAttributes redirectAttributes) {
+        loanService.updateStatus(id, newStatus, remarks, rejectionReason);
+        redirectAttributes.addFlashAttribute("successMessage", 
+                "Status updated to " + newStatus + " and audit event logged successfully!");
+        return "redirect:/loans/" + id;
+    }
+
+    @GetMapping("/alerts")
+    public String viewAlerts(Model model) {
+        model.addAttribute("rejectedLoans", loanService.getApplicationsByStatus("REJECTED"));
+        return "alerts";
+    }
 }
