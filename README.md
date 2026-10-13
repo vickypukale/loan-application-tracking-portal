@@ -40,4 +40,4 @@ mvn spring-boot:run
 ```
 
 Access the portal in your browser at: `http://localhost:8080`
-### Status: Under Active Review in Sprint 2 
+### Status: Release-Ready Baseline v1.0.0 (MVP Completed)

@@ -7,11 +7,13 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
-        .card-counter { border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .card-counter { border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s; }
+        .card-counter:hover { transform: translateY(-3px); }
         .badge-SUBMITTED { background-color: #0dcaf0; color: #000; }
+        .badge-DOCUMENT_VERIFIED { background-color: #6f42c1; color: #fff; }
+        .badge-UNDERWRITING { background-color: #ffc107; color: #000; }
         .badge-APPROVED { background-color: #198754; color: #fff; }
         .badge-REJECTED { background-color: #dc3545; color: #fff; }
-        .badge-UNDERWRITING { background-color: #ffc107; color: #000; }
     </style>
 </head>
 <body>
@@ -21,55 +23,104 @@
             <div class="navbar-nav ms-auto">
                 <a class="nav-link active" th:href="@{/dashboard}" id="navDashboard">Dashboard</a>
                 <a class="nav-link" th:href="@{/apply}" id="navApply">New Application</a>
+                <a class="nav-link" th:href="@{/alerts}" id="navAlerts">Alerts & Exceptions</a>
             </div>
         </div>
     </nav>
 
     <div class="container pb-5">
-        <!-- Success Alert -->
+        <!-- Flash Success Message -->
         <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show mb-4" role="alert" id="successAlert">
-            <span th:text="${successMessage}">Success message</span>
+            <span th:text="${successMessage}">Action succeeded</span>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
-        <!-- Header & Action -->
+        <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold mb-1" id="dashboardHeading">Loan Applications Dashboard</h2>
-                <p class="text-muted mb-0">Track and manage applicant requests across all review stages.</p>
+                <p class="text-muted mb-0">Real-time status tracking, workload metrics, and lifecycle monitoring.</p>
             </div>
             <a th:href="@{/apply}" class="btn btn-primary" id="newAppBtn">+ New Application</a>
         </div>
 
-        <!-- Applications Table Card -->
+        <!-- Summary KPI Indicator Cards -->
+        <div class="row mb-4" id="kpiIndicatorsRow">
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-primary">
+                    <span class="text-muted small text-uppercase fw-bold">Total Applications</span>
+                    <h2 class="fw-bold text-primary mt-2 mb-0" id="kpiTotalCount" th:text="${totalCount}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-info">
+                    <span class="text-muted small text-uppercase fw-bold">In Intake / Review</span>
+                    <h2 class="fw-bold text-info mt-2 mb-0" id="kpiSubmittedCount" th:text="${submittedCount}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-success">
+                    <span class="text-muted small text-uppercase fw-bold">Approved Loans</span>
+                    <h2 class="fw-bold text-success mt-2 mb-0" id="kpiApprovedCount" th:text="${approvedCount}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-danger">
+                    <span class="text-muted small text-uppercase fw-bold">Rejected / Exceptions</span>
+                    <h2 class="fw-bold text-danger mt-2 mb-0" id="kpiRejectedCount" th:text="${rejectedCount}">0</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="card card-counter p-3 mb-4">
+            <form th:action="@{/dashboard}" method="get" class="row g-2 align-items-center" id="searchForm">
+                <div class="col-md-10">
+                    <input type="text" class="form-control" id="searchBox" name="search" 
+                           th:value="${searchQuery}" placeholder="Search by Application ID (e.g. LOAN-1001) or Applicant Name...">
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100" id="searchBtn">Search</button>
+                    <a th:if="${searchQuery != ''}" th:href="@{/dashboard}" class="btn btn-outline-secondary" id="resetBtn">Reset</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Main Applications Table -->
         <div class="card card-counter p-4">
-            <h5 class="fw-bold mb-3">All Active Loan Records</h5>
+            <h5 class="fw-bold mb-3">Loan Records</h5>
             <div class="table-responsive">
                 <table class="table table-hover align-middle" id="applicationsTable">
                     <thead class="table-light">
                         <tr>
                             <th>Application ID</th>
                             <th>Applicant Name</th>
-                            <th>Loan Category</th>
+                            <th>Category</th>
                             <th>Amount</th>
                             <th>Current Status</th>
-                            <th>Created Date</th>
+                            <th>Submission Date</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr th:each="app : ${applications}">
                             <td class="fw-bold text-primary" th:text="${app.applicationId}">LOAN-1001</td>
-                            <td th:text="${app.applicantName}">Jane Smith</td>
-                            <td th:text="${app.loanType}">PERSONAL</td>
-                            <td th:text="'$' + ${#numbers.formatDecimal(app.loanAmount, 1, 2)}">$25,000.00</td>
+                            <td th:text="${app.applicantName}">John Doe</td>
+                            <td><span class="badge bg-light text-dark border" th:text="${app.loanType}">PERSONAL</span></td>
+                            <td class="fw-semibold" th:text="'$' + ${#numbers.formatDecimal(app.loanAmount, 1, 2)}">$25,000.00</td>
                             <td>
-                                <span class="badge" th:classappend="'badge-' + ${app.currentStatus}" th:text="${app.currentStatus}">SUBMITTED</span>
+                                <span class="badge" th:classappend="'badge-' + ${app.currentStatus}" 
+                                      th:text="${app.currentStatus}" th:id="'statusBadge_' + ${app.applicationId}">SUBMITTED</span>
                             </td>
                             <td th:text="${#temporals.format(app.createdAt, 'yyyy-MM-dd HH:mm')}">2026-10-13</td>
+                            <td>
+                                <a th:href="@{/loans/{id}(id=${app.id})}" class="btn btn-sm btn-outline-primary" 
+                                   th:id="'viewDetailsBtn_' + ${app.applicationId}">Drill-Down / Timeline &rarr;</a>
+                            </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(applications)}">
-                            <td colspan="6" class="text-center text-muted py-4" id="emptyStateRow">
-                                No loan applications found. Click <strong>+ New Application</strong> to create the first record.
+                            <td colspan="7" class="text-center text-muted py-4" id="emptyStateRow">
+                                No loan applications found matching criteria.
                             </td>
                         </tr>
                     </tbody>
