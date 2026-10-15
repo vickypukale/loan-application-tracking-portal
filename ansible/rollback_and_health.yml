@@ -1,0 +1,75 @@
+---
+- name: "Health Verification and Automated Rollback for Loan Portal"
+  hosts: loan_servers
+  become: yes
+  gather_facts: no
+
+  vars:
+    app_port: 8081
+    container_name: loan-portal-app
+    stable_image: "loan-portal:v1.0.0"
+
+  tasks:
+    # -------------------------------------------------------------
+    # 1. Health Check Audit
+    # -------------------------------------------------------------
+    - name: "Query Loan Application Tracking Portal Actuator Health"
+      uri:
+        url: "http://localhost:{{ app_port }}/actuator/health"
+        method: GET
+        status_code: 200
+        return_content: yes
+      register: health_response
+      ignore_errors: yes
+
+    # -------------------------------------------------------------
+    # 2. Automated Rollback Trigger (if health check fails)
+    # -------------------------------------------------------------
+    - name: "Rollback condition evaluated"
+      debug:
+        msg: >
+          {% if health_response.status == 200 %}
+          ✅ System is HEALTHY (Status 200 OK). No rollback required.
+          {% else %}
+          🚨 System is UNHEALTHY! Initiating automated rollback to {{ stable_image }}...
+          {% endif %}
+
+    - name: "Execute rollback: Stop and remove defective container"
+      command: "docker rm -f {{ container_name }}"
+      when: health_response.status != 200
+      ignore_errors: yes
+
+    - name: "Execute rollback: Deploy previous stable container release ({{ stable_image }})"
+      command: >
+        docker run -d 
+        --name {{ container_name }} 
+        -p {{ app_port }}:8081 
+        --restart unless-stopped 
+        {{ stable_image }}
+      when: health_response.status != 200
+
+    - name: "Wait for rolled-back container to stabilize"
+      pause:
+        seconds: 10
+      when: health_response.status != 200
+
+    # -------------------------------------------------------------
+    # 3. Post-Rollback Health Verification
+    # -------------------------------------------------------------
+    - name: "Post-Rollback Health Verification"
+      uri:
+        url: "http://localhost:{{ app_port }}/actuator/health"
+        method: GET
+        status_code: 200
+      register: post_rollback_health
+      when: health_response.status != 200
+
+    - name: "Summary Report"
+      debug:
+        msg:
+          - "=========================================================="
+          - "RELIABILITY AUDIT REPORT"
+          - "Target Port         : {{ app_port }}"
+          - "Active Release      : {{ stable_image }}"
+          - "Health Status       : UP (HTTP 200 OK)"
+          - "=========================================================="
