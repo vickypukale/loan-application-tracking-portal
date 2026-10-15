@@ -4,7 +4,7 @@ pipeline {
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['DEV', 'STAGING', 'PROD'], description: 'Deployment Target Environment')
         string(name: 'TARGET_PORT', defaultValue: '8081', description: 'Network Port for Deployed Application')
-        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Execute JUnit Automated Test Suite')
+        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Execute Quality Gate Test Suites')
     }
 
     environment {
@@ -22,37 +22,48 @@ pipeline {
             }
         }
 
-        stage('2. Build & Test') {
+        stage('2. Unit & Integration Tests') {
             when {
                 expression { return params.RUN_TESTS }
             }
             steps {
-                echo "Compiling Java sources and executing automated JUnit tests..."
-                bat 'mvn clean test'
+                echo "Executing JUnit Unit and Integration Test Suite..."
+                bat 'mvn clean test -Dtest=LoanApplicationPortalAppTests,LoanServiceTest'
+            }
+        }
+
+        stage('3. Continuous Testing - Selenium Quality Gate') {
+            when {
+                expression { return params.RUN_TESTS }
+            }
+            steps {
+                echo "Executing Selenium WebDriver Headless E2E Quality Gate..."
+                bat 'mvn test -Dtest=LoanPortalSeleniumE2ETest'
             }
             post {
                 always {
+                    // Publish test reports to Jenkins UI
                     junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                    // Archive any failure screenshots captured during test run
+                    archiveArtifacts artifacts: 'target/screenshots/*.png', allowEmptyArchive: true
                 }
             }
         }
 
-        stage('3. Package Artifact') {
+        stage('4. Package Artifact') {
             steps {
-                echo "Packaging production-ready JAR/WAR artifact..."
+                echo "Quality gates passed! Packaging production executable JAR..."
                 bat 'mvn package -DskipTests'
                 archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
 
-        stage('4. Deploy to Server') {
+        stage('5. Deploy to Server') {
             steps {
                 echo "Deploying ${env.APP_NAME} to ${params.ENVIRONMENT} environment on port ${params.TARGET_PORT}..."
-                // 1. Stop any existing instance running on the target port
                 bat """
                     powershell -Command "Stop-Process -Id (Get-NetTCPConnection -LocalPort ${params.TARGET_PORT} -ErrorAction SilentlyContinue).OwningProcess -Force" || exit 0
                 """
-                // 2. Launch the new build in the background
                 bat """
                     powershell -Command "Start-Process java -ArgumentList '-jar', 'target/${env.JAR_NAME}', '--server.port=${params.TARGET_PORT}' -WindowStyle Hidden"
                 """
@@ -60,10 +71,9 @@ pipeline {
             }
         }
 
-        stage('5. Smoke & Health Check') {
+        stage('6. Smoke & Health Check') {
             steps {
                 echo "Verifying application availability via Actuator Health endpoint..."
-                // Wait 12 seconds for Spring Boot container initialization
                 sleep time: 12, unit: 'SECONDS'
                 bat """
                     powershell -Command "Invoke-RestMethod -Uri http://localhost:${params.TARGET_PORT}/actuator/health -Method Get"
@@ -76,14 +86,16 @@ pipeline {
     post {
         success {
             echo "=========================================================="
-            echo "🎉 PIPELINE SUCCESSFUL!"
+            echo "🎉 ALL QUALITY GATES PASSED! PIPELINE SUCCESSFUL!"
             echo "Target Environment : ${params.ENVIRONMENT}"
             echo "Portal URL         : http://localhost:${params.TARGET_PORT}/dashboard"
-            echo "Health Endpoint    : http://localhost:${params.TARGET_PORT}/actuator/health"
             echo "=========================================================="
         }
         failure {
-            echo "❌ Pipeline failed! Check stage failure logs and notify developers."
+            echo "=========================================================="
+            echo "🚨 QUALITY GATE FAILED! DEPLOYMENT ABORTED!"
+            echo "Check JUnit Test Result and Screenshots in Jenkins build artifacts."
+            echo "=========================================================="
         }
     }
 }
