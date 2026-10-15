@@ -1,0 +1,12 @@
+target/
+*.class
+.git
+.gitignore
+.github
+.idea
+.vscode
+*.iml
+*.log
+Jenkinsfile
+test-output/
+screenshots/
