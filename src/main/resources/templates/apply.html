@@ -9,60 +9,191 @@
         body { background-color: #f4f6f9; }
         .card-custom { border-radius: 10px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
+        .section-divider { border-top: 2px solid #e9ecef; margin: 24px 0 16px; padding-top: 12px; }
+        .section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+                         letter-spacing: 1px; color: #6c757d; margin-bottom: 16px; }
+        .sbi-badge { background: linear-gradient(135deg, #1a56a4, #003f8a);
+                     color: white; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" th:href="@{/dashboard}">🏦 LoanTrack Portal</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" th:href="@{/dashboard}" id="navDashboard">Dashboard</a>
-                <a class="nav-link active" th:href="@{/apply}" id="navApply">New Application</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navApplyContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navApplyContent">
+                <div class="navbar-nav me-auto">
+                    <a th:if="${currentUser != null && currentUser.isUser()}" class="nav-link" th:href="@{/my-applications}" id="navMyApplications">My Applications</a>
+                    <a th:unless="${currentUser != null && currentUser.isUser()}" class="nav-link" th:href="@{/dashboard}" id="navDashboard">Dashboard</a>
+                    <a class="nav-link active" th:href="@{/apply}" id="navApply">New Application</a>
+                    <a th:if="${currentUser == null || currentUser.isAdmin()}" class="nav-link" th:href="@{/alerts}" id="navAlerts">Alerts &amp; Exceptions</a>
+                </div>
+                <div class="navbar-nav ms-auto align-items-center">
+                    <span th:if="${currentUser != null}" class="badge me-3 px-3 py-2" 
+                          th:classappend="${currentUser.isAdmin()} ? 'bg-dark text-warning border border-warning' : 'bg-primary'"
+                          id="userRoleBadge">
+                        <span th:text="${currentUser.isAdmin()} ? '🛡️ ' + ${currentUser.fullName} + ' (Officer)' : '👤 ' + ${currentUser.fullName} + ' (Applicant)'">User</span>
+                    </span>
+                    <a th:if="${currentUser != null}" th:href="@{/logout}" class="btn btn-outline-light btn-sm" id="logoutBtn">Logout</a>
+                    <div th:unless="${currentUser != null}" class="d-flex gap-2">
+                        <a th:href="@{/login}" class="btn btn-outline-light btn-sm" id="navLoginBtn">🔑 Login</a>
+                        <a th:href="@{/register}" class="btn btn-primary btn-sm" id="navRegisterBtn">Register</a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="container pb-5">
         <div class="row justify-content-center">
-            <div class="col-md-8 col-lg-6">
+            <div class="col-md-10 col-lg-8">
                 <div class="card card-custom p-4">
-                    <h3 class="mb-3 text-center text-primary" id="pageTitle">Submit Loan Application</h3>
-                    <p class="text-muted text-center mb-4">Enter borrower details to initialize tracking and trigger initial intake audit event.</p>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h3 class="mb-0 text-primary fw-bold" id="pageTitle">Submit Loan Application</h3>
+                        <span class="sbi-badge">🏛️ SBI Underwriting Engine</span>
+                    </div>
+                    <p class="text-muted mb-4">Enter borrower details. The SBI Risk Engine will automatically evaluate CIBIL, FOIR, Age, and Income criteria on submission.</p>
 
                     <form th:action="@{/apply}" th:object="${loanApplication}" method="post" id="loanForm">
-                        <div class="mb-3">
-                            <label for="applicantName" class="form-label font-weight-bold">Applicant Full Name</label>
-                            <input type="text" class="form-control" id="applicantName" th:field="*{applicantName}" placeholder="e.g. John Doe" required>
+
+                        <!-- ── SECTION 1: Basic Applicant Info ── -->
+                        <div class="section-divider">
+                            <div class="section-title">📋 Applicant Information</div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="email" class="form-label font-weight-bold">Email Address</label>
-                            <input type="email" class="form-control" id="email" th:field="*{email}" placeholder="john.doe@example.com" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="applicantName" class="form-label fw-semibold">Applicant Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="applicantName" th:field="*{applicantName}"
+                                       placeholder="e.g. Rahul Sharma" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="panNumber" class="form-label fw-semibold">PAN Card Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control text-uppercase" id="panNumber" th:field="*{panNumber}"
+                                       placeholder="e.g. ABCDE1234F" maxlength="10"
+                                       pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" title="Format: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)"
+                                       required>
+                                <div class="form-text text-muted">Format: ABCDE1234F (5 letters, 4 digits, 1 letter)</div>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="phone" class="form-label font-weight-bold">Phone Number</label>
-                            <input type="tel" class="form-control" id="phone" th:field="*{phone}" placeholder="+1-555-0199" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" th:field="*{email}"
+                                       placeholder="rahul.sharma@example.com" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="phone" th:field="*{phone}"
+                                       placeholder="9876543210" required>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="loanAmount" class="form-label font-weight-bold">Requested Loan Amount ($ / ₹)</label>
-                            <input type="number" step="0.01" class="form-control" id="loanAmount" th:field="*{loanAmount}" placeholder="25000" min="1000" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="age" class="form-label fw-semibold">Age (Years) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="age" th:field="*{age}"
+                                       placeholder="e.g. 32" min="18" max="70" required>
+                                <div class="form-text text-muted">SBI Eligibility: 21–60 years</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="employmentType" class="form-label fw-semibold">Employment Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="employmentType" th:field="*{employmentType}" required>
+                                    <option value="" disabled selected>Select Employment Type</option>
+                                    <option value="SALARIED">Salaried (Min. 6–12 months in current job)</option>
+                                    <option value="SELF_EMPLOYED">Self-Employed (Business profitable 3+ years)</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="loanType" class="form-label font-weight-bold">Loan Category</label>
-                            <select class="form-select" id="loanType" th:field="*{loanType}" required>
-                                <option value="" disabled selected>Select Loan Type</option>
-                                <option value="PERSONAL">Personal Loan</option>
-                                <option value="HOME">Home Loan</option>
-                                <option value="AUTO">Auto / Vehicle Loan</option>
-                                <option value="EDUCATION">Education Loan</option>
-                            </select>
+                        <!-- ── SECTION 2: Loan Details ── -->
+                        <div class="section-divider">
+                            <div class="section-title">💰 Loan Requirements</div>
                         </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Submit Application</button>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="loanType" class="form-label fw-semibold">Loan Category <span class="text-danger">*</span></label>
+                                <select class="form-select" id="loanType" th:field="*{loanType}" required>
+                                    <option value="" disabled selected>Select Loan Type</option>
+                                    <option value="HOME">🏠 Home Loan (Purchase / Construction / Renovation)</option>
+                                    <option value="PERSONAL">👤 Personal Loan (Medical / Wedding / Personal)</option>
+                                    <option value="AUTO">🚗 Auto / Car Loan (New or Pre-owned Vehicle)</option>
+                                    <option value="EDUCATION">🎓 Education Loan (India / Abroad)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="loanAmount" class="form-label fw-semibold">Requested Loan Amount (₹) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="any" class="form-control" id="loanAmount" th:field="*{loanAmount}"
+                                           placeholder="500000" min="1000" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tenureMonths" class="form-label fw-semibold">Requested Tenure (Months) <span class="text-danger">*</span></label>
+                                <select class="form-select" id="tenureMonths" th:field="*{tenureMonths}" required>
+                                    <option value="" disabled selected>Select Tenure</option>
+                                    <option value="12">12 Months (1 Year)</option>
+                                    <option value="24">24 Months (2 Years)</option>
+                                    <option value="36">36 Months (3 Years)</option>
+                                    <option value="60">60 Months (5 Years)</option>
+                                    <option value="84">84 Months (7 Years)</option>
+                                    <option value="120">120 Months (10 Years)</option>
+                                    <option value="180">180 Months (15 Years)</option>
+                                    <option value="240">240 Months (20 Years)</option>
+                                    <option value="300">300 Months (25 Years)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- ── SECTION 3: Financial Profile (FOIR Inputs) ── -->
+                        <div class="section-divider">
+                            <div class="section-title">📊 Financial Profile (SBI FOIR Assessment)</div>
+                        </div>
+                        <div class="alert alert-info py-2 px-3 small mb-3">
+                            <strong>📌 SBI FOIR Rule:</strong> Total EMI obligations (existing + proposed) must be
+                            <strong>≤ 50%</strong> of your net monthly income. CIBIL score must be <strong>≥ 750</strong> for pre-approval.
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="cibilScore" class="form-label fw-semibold">CIBIL Credit Score <span class="text-danger">*</span></label>
+                                <input type="number" step="1" class="form-control" id="cibilScore" th:field="*{cibilScore}"
+                                       placeholder="e.g. 780" min="300" max="900" required>
+                                <div class="form-text text-muted">Range: 300–900. SBI min: 650, preferred: 750+</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="monthlyIncome" class="form-label fw-semibold">Net Monthly Income (₹) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="any" class="form-control" id="monthlyIncome" th:field="*{monthlyIncome}"
+                                           placeholder="50000" min="0" required>
+                                </div>
+                                <div class="form-text text-muted">SBI min for salaried: ₹20,000/month</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="existingEmi" class="form-label fw-semibold">Total Existing Monthly EMIs (₹)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="any" class="form-control" id="existingEmi" th:field="*{existingEmi}"
+                                           placeholder="5000" min="0" value="0">
+                                </div>
+                                <div class="form-text text-muted">Sum of all active loan EMIs. Enter 0 if none.</div>
+                            </div>
+                        </div>
+
+                        <!-- ── SUBMIT ── -->
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                🚀 Submit Application &amp; Run SBI Risk Assessment
+                            </button>
                             <a th:href="@{/dashboard}" class="btn btn-outline-secondary" id="cancelBtn">Cancel</a>
                         </div>
                     </form>
@@ -70,5 +201,29 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Live FOIR preview as user fills in financial fields
+        function updateFoirPreview() {
+            const income = parseFloat(document.getElementById('monthlyIncome').value) || 0;
+            const existingEmi = parseFloat(document.getElementById('existingEmi').value) || 0;
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value) || 0;
+            const tenure = parseInt(document.getElementById('tenureMonths').value) || 60;
+            const proposedEmi = tenure > 0 ? loanAmount / tenure : 0;
+
+            if (income > 0) {
+                const foir = ((existingEmi + proposedEmi) / income * 100).toFixed(1);
+                const badge = document.getElementById('foirPreview');
+                if (badge) {
+                    badge.textContent = 'Live FOIR Estimate: ' + foir + '%';
+                    badge.className = 'badge mt-2 ' + (parseFloat(foir) > 50 ? 'bg-danger' : (parseFloat(foir) > 40 ? 'bg-warning text-dark' : 'bg-success'));
+                }
+            }
+        }
+        ['monthlyIncome', 'existingEmi', 'loanAmount', 'tenureMonths'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateFoirPreview);
+        });
+    </script>
 </body>
 </html>

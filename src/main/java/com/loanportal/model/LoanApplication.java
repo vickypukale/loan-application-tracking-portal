@@ -39,8 +39,54 @@ public class LoanApplication {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // ============================================================
+    // SBI Phase 2: Enhanced Underwriting Fields (Roadmap §4 Step 1)
+    // ============================================================
+
+    /** CIBIL credit score. SBI threshold: >= 750 for auto-approval. */
+    private Integer cibilScore;
+
+    /** Net monthly income in INR (₹). Salaried: min ₹20,000–₹25,000. */
+    private Double monthlyIncome;
+
+    /** Sum of all existing monthly EMIs in INR (₹). Used for FOIR calc. */
+    private Double existingEmi;
+
+    /** Employment category: SALARIED or SELF_EMPLOYED */
+    private String employmentType;
+
+    /** Applicant age. SBI: must be 21–60 years at time of application. */
+    private Integer age;
+
+    /** PAN Card number. Format: [A-Z]{5}[0-9]{4}[A-Z]{1} */
+    @Column(length = 10)
+    private String panNumber;
+
+    /** Loan tenure requested in months (e.g. 12, 24, 60, 120, 240). */
+    private Integer tenureMonths;
+
+    /**
+     * SBI automated risk engine tag assigned at submission.
+     * Values: PRE_APPROVED | MANUAL_REVIEW | HIGH_RISK_EXCEPTION
+     */
+    private String sbiEligibilityTag;
+
+    /**
+     * Calculated FOIR (Fixed Obligation to Income Ratio) in %.
+     * Formula: (existingEmi + proposedEMI) / monthlyIncome * 100
+     * SBI threshold: must not exceed 50%.
+     */
+    private Double calculatedFoir;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id")
+    private User applicantUser;
+
     @OneToMany(mappedBy = "loanApplication", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LoanEvent> events = new ArrayList<>();
+
+    @OneToMany(mappedBy = "loanApplication", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LoanDocument> documents = new ArrayList<>();
 
     public LoanApplication() {
     }
@@ -56,7 +102,8 @@ public class LoanApplication {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
+    // ---- Getters and Setters ----
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -97,4 +144,39 @@ public class LoanApplication {
         events.add(event);
         event.setLoanApplication(this);
     }
+
+    public List<LoanDocument> getDocuments() { return documents; }
+    public void setDocuments(List<LoanDocument> documents) { this.documents = documents; }
+
+    // ---- SBI Phase 2 Getters and Setters ----
+
+    public Integer getCibilScore() { return cibilScore; }
+    public void setCibilScore(Integer cibilScore) { this.cibilScore = cibilScore; }
+
+    public Double getMonthlyIncome() { return monthlyIncome; }
+    public void setMonthlyIncome(Double monthlyIncome) { this.monthlyIncome = monthlyIncome; }
+
+    public Double getExistingEmi() { return existingEmi; }
+    public void setExistingEmi(Double existingEmi) { this.existingEmi = existingEmi; }
+
+    public String getEmploymentType() { return employmentType; }
+    public void setEmploymentType(String employmentType) { this.employmentType = employmentType; }
+
+    public Integer getAge() { return age; }
+    public void setAge(Integer age) { this.age = age; }
+
+    public String getPanNumber() { return panNumber; }
+    public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+
+    public Integer getTenureMonths() { return tenureMonths; }
+    public void setTenureMonths(Integer tenureMonths) { this.tenureMonths = tenureMonths; }
+
+    public String getSbiEligibilityTag() { return sbiEligibilityTag; }
+    public void setSbiEligibilityTag(String sbiEligibilityTag) { this.sbiEligibilityTag = sbiEligibilityTag; }
+
+    public Double getCalculatedFoir() { return calculatedFoir; }
+    public void setCalculatedFoir(Double calculatedFoir) { this.calculatedFoir = calculatedFoir; }
+
+    public User getApplicantUser() { return applicantUser; }
+    public void setApplicantUser(User applicantUser) { this.applicantUser = applicantUser; }
 }

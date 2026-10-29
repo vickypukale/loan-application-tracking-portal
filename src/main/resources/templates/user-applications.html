@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Applications - Loan Tracking Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card-counter { border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s; }
+        .card-counter:hover { transform: translateY(-3px); }
+        .badge-SUBMITTED { background-color: #0dcaf0; color: #000; }
+        .badge-DOCUMENT_VERIFIED { background-color: #6f42c1; color: #fff; }
+        .badge-UNDERWRITING { background-color: #ffc107; color: #000; }
+        .badge-APPROVED { background-color: #198754; color: #fff; }
+        .badge-REJECTED { background-color: #dc3545; color: #fff; }
+        .tag-PRE_APPROVED { background-color: #198754; color: #fff; }
+        .tag-MANUAL_REVIEW { background-color: #ffc107; color: #000; }
+        .tag-HIGH_RISK_EXCEPTION { background-color: #dc3545; color: #fff; }
+        .user-hero { background: linear-gradient(135deg, #1d3557, #457b9d); color: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" th:href="@{/my-applications}">🏦 LoanTrack Portal</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#userNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="userNav">
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link active" th:href="@{/my-applications}" id="navMyApplications">My Applications</a>
+                    <a class="nav-link" th:href="@{/apply}" id="navApply">Apply for Loan</a>
+                </div>
+                <div class="navbar-nav ms-auto align-items-center">
+                    <span class="badge bg-primary me-3 px-3 py-2" id="userRoleBadge">
+                        👤 <span th:text="${currentUser != null ? currentUser.fullName : 'Applicant'}">Applicant</span> (Borrower)
+                    </span>
+                    <a th:href="@{/logout}" class="btn btn-outline-light btn-sm" id="logoutBtn">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <!-- Flash Messages -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show mb-4" role="alert" id="successAlert">
+            <span th:text="${successMessage}">Action succeeded</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show mb-4" role="alert" id="errorAlert">
+            <span th:text="${errorMessage}">Error occurred</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Applicant Hero Welcome Card -->
+        <div class="user-hero d-flex flex-wrap justify-content-between align-items-center shadow-sm">
+            <div>
+                <h3 class="fw-bold mb-1" id="applicantWelcomeHeading">
+                    Welcome, <span th:text="${currentUser != null ? currentUser.fullName : 'Applicant'}">Applicant</span>!
+                </h3>
+                <p class="mb-0 text-white-50">Track the real-time stage progression and underwriting audit trail of your loan applications.</p>
+            </div>
+            <a th:href="@{/apply}" class="btn btn-light btn-lg fw-bold text-primary mt-2 mt-md-0" id="applyNewLoanBtn">+ Apply for New Loan</a>
+        </div>
+
+        <!-- KPI Indicator Cards for End User -->
+        <div class="row mb-4" id="userKpiRow">
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-primary">
+                    <span class="text-muted small text-uppercase fw-bold">My Applications</span>
+                    <h2 class="fw-bold text-primary mt-2 mb-0" id="userTotalCount" th:text="${totalCount}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-info">
+                    <span class="text-muted small text-uppercase fw-bold">Under Review</span>
+                    <h2 class="fw-bold text-info mt-2 mb-0" id="userSubmittedCount" th:text="${submittedCount}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-success">
+                    <span class="text-muted small text-uppercase fw-bold">Approved Loans</span>
+                    <h2 class="fw-bold text-success mt-2 mb-0" id="userApprovedCount" th:text="${approvedCount}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card card-counter p-3 border-start border-4 border-danger">
+                    <span class="text-muted small text-uppercase fw-bold">Rejected Loans</span>
+                    <h2 class="fw-bold text-danger mt-2 mb-0" id="userRejectedCount" th:text="${rejectedCount}">0</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Applications Table Card -->
+        <div class="card card-counter p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">Your Loan Applications</h5>
+                <span class="badge bg-light text-secondary border" th:text="${totalCount} + ' Record(s)'">0 Record(s)</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="userApplicationsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Application ID</th>
+                            <th>Applicant</th>
+                            <th>Category</th>
+                            <th>Requested Amount</th>
+                            <th>Current Status</th>
+                            <th>Risk Engine Result</th>
+                            <th>Applied On</th>
+                            <th>Status &amp; Timeline</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr th:each="app : ${applications}">
+                            <td class="fw-bold text-primary" th:text="${app.applicationId}">LOAN-1001</td>
+                            <td th:text="${app.applicantName}">Applicant Name</td>
+                            <td><span class="badge bg-light text-dark border" th:text="${app.loanType}">PERSONAL</span></td>
+                            <td class="fw-semibold" th:text="'₹' + ${#numbers.formatDecimal(app.loanAmount, 1, 2)}">₹25,000.00</td>
+                            <td>
+                                <span class="badge" th:classappend="'badge-' + ${app.currentStatus}" 
+                                      th:text="${app.currentStatus}" th:id="'userStatusBadge_' + ${app.applicationId}">SUBMITTED</span>
+                            </td>
+                            <td>
+                                <span th:if="${app.sbiEligibilityTag != null}" class="badge"
+                                      th:classappend="'tag-' + ${app.sbiEligibilityTag}"
+                                      th:text="${app.sbiEligibilityTag}">PRE_APPROVED</span>
+                                <span th:unless="${app.sbiEligibilityTag != null}" class="text-muted small">Standard Review</span>
+                            </td>
+                            <td th:text="${#temporals.format(app.createdAt, 'yyyy-MM-dd HH:mm')}">2026-10-13</td>
+                            <td>
+                                <a th:href="@{/loans/{id}(id=${app.id})}" class="btn btn-sm btn-primary" 
+                                   th:id="'trackTimelineBtn_' + ${app.applicationId}">View Status &amp; Timeline &rarr;</a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(applications)}">
+                            <td colspan="8" class="text-center text-muted py-5" id="userEmptyStateRow">
+                                <h6>You have not submitted any loan applications yet.</h6>
+                                <p class="small text-muted mb-3">Fill your loan requirements and get automated risk evaluation instantly.</p>
+                                <a th:href="@{/apply}" class="btn btn-primary btn-sm">+ Submit Your First Application</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

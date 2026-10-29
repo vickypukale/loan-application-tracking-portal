@@ -36,4 +36,7 @@ ehthumbs.db
 # Test reports & screenshots
 test-output/
 screenshots/
-docs/FUTURE_ENHANCEMENTS_SBI_ROADMAP.md
+
+# Local persistent database and KYC uploads
+data/
+uploads/

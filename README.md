@@ -61,6 +61,13 @@ flowchart LR
 
 ## 🌟 Key Features (MVP)
 
+* **Dual-Role Authentication & Access Control:**
+  * **End User / Applicant Portal (`/my-applications`):** Borrowers register and log in to submit loan applications (`/apply`) and track real-time application stages, SBI risk scores, and audit timelines. Protected so applicants only view their own loans.
+  * **Admin / Loan Officer Console (`/dashboard`):** Bank underwriters and officers log in to review all applications, evaluate financial pillars, advance application stages, and record timestamped audit remarks.
+* **Pre-Seeded Demo Credentials & 1-Click Quick Login:**
+  * **Applicant:** `user` / `user123` (or register new borrower)
+  * **Administrator / Officer:** `admin` / `admin123`
+  * One-click demo login buttons on `/login` for instantaneous testing and evaluation.
 * **Intake & Auto-Generated ID:** Submits borrower applications with auto-generated reference IDs (`LOAN-1001`, `LOAN-1002`, etc.) and initializes immutable audit tracking.
 * **Summary KPI Indicators:** 4 real-time dashboard counters calculating *Total Applications*, *In Intake / Review*, *Approved Loans*, and *Rejected / Exceptions*.
 * **Searchable Dashboard:** Query loan records by Application ID or Applicant Name with instant filtering and reset controls.
@@ -112,11 +119,15 @@ The pipeline enforces a 7-stage quality gate before code reaches the target envi
 
 ## 🧪 Automated Quality Gate (Selenium E2E)
 
-The automated UI test suite executes **4 critical user journeys** against Headless Chrome:
+The automated UI test suite executes **8 comprehensive end-to-end user journeys** against Headless Chrome:
 1. **Journey 1 (Intake):** Submits borrower form $\rightarrow$ verifies redirect and appearance of `LOAN-XXXX` ID on `/dashboard`.
 2. **Journey 2 (Search):** Types query into search input $\rightarrow$ asserts table filters matching records.
 3. **Journey 3 (Drill-Down):** Advances application status to `DOCUMENT_VERIFIED` $\rightarrow$ verifies audit timeline log.
 4. **Journey 4 (Alerts):** Rejects application with reason code $\rightarrow$ verifies routing into `/alerts` queue.
+5. **Journey 5 (SBI Journey A):** Eligible applicant with CIBIL $\ge$ 750 $\rightarrow$ automatically tagged `PRE_APPROVED`.
+6. **Journey 6 (SBI Journey B):** Ineligible applicant with CIBIL < 650 $\rightarrow$ tagged `HIGH_RISK_EXCEPTION` and auto-routed to Alerts.
+7. **Journey 7 (End-User Login & Portal):** Applicant logs in with credentials $\rightarrow$ submits personal loan $\rightarrow$ verifies application tracking on `/my-applications` $\rightarrow$ verifies stage update controls are read-only.
+8. **Journey 8 (Admin Login & Management):** Administrator logs in $\rightarrow$ accesses full dashboard $\rightarrow$ updates borrower stage to `APPROVED` $\rightarrow$ verifies officer remarks logged in audit trail $\rightarrow$ accesses Alerts queue.
 * **Automated Failure Screenshots:** Captured via JUnit 5 `TestWatcher` callback into `target/screenshots/*.png`.
 
 ---

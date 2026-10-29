@@ -31,7 +31,7 @@ pipeline {
             }
             steps {
                 echo "Executing JUnit Unit and Integration Test Suite..."
-                bat 'mvn clean test -Dtest=LoanApplicationPortalAppTests,LoanServiceTest'
+                bat 'mvn clean test -Dtest=LoanApplicationPortalAppTests,LoanServiceTest,UserServiceTest'
             }
         }
 

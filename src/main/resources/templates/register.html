@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applicant Registration - Loan Tracking Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #0d1b2a, #1b263b, #415a77); min-height: 100vh; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        .auth-card { border: none; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); background-color: #ffffff; }
+        .brand-header { color: #ffffff; text-align: center; margin-bottom: 25px; }
+    </style>
+</head>
+<body class="d-flex align-items-center py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+
+                <!-- Brand Header -->
+                <div class="brand-header">
+                    <h2 class="fw-bold mb-1">🏦 LoanTrack Portal</h2>
+                    <p class="text-white-50">Create your borrower account to apply & track loan applications</p>
+                </div>
+
+                <!-- Messages -->
+                <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert" id="registerErrorAlert">
+                    <span th:text="${errorMessage}">Error message</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="card auth-card p-4">
+                    <h4 class="fw-bold text-primary mb-1">Applicant Registration</h4>
+                    <p class="text-muted small mb-4">Complete the form below to sign up as a retail loan borrower.</p>
+
+                    <form th:action="@{/register}" method="post" id="registerForm">
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="fullName" name="fullName" placeholder="e.g. Ramesh Patel" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" name="username" placeholder="ramesh123" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label fw-semibold">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="9876543210">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="ramesh.patel@example.com" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Min. 6 characters" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirmPassword" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" placeholder="Re-enter password" required>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3 mt-2">
+                            <button type="submit" class="btn btn-primary fw-bold py-2" id="submitRegisterBtn">Register &amp; Proceed &rarr;</button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <span class="text-muted small">Already have an account?</span>
+                        <a th:href="@{/login}" class="fw-semibold text-primary ms-1">Log In</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

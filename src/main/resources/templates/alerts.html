@@ -3,34 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alerts & Exceptions - Loan Tracking Portal</title>
+    <title>Alerts &amp; Exceptions - Loan Tracking Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
         .card-custom { border-radius: 10px; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        .tag-PRE_APPROVED { background-color: #198754; color: #fff; }
+        .tag-MANUAL_REVIEW { background-color: #ffc107; color: #000; }
+        .tag-HIGH_RISK_EXCEPTION { background-color: #dc3545; color: #fff; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold" th:href="@{/dashboard}">🏦 LoanTrack Portal</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" th:href="@{/dashboard}" id="navDashboard">Dashboard</a>
-                <a class="nav-link" th:href="@{/apply}" id="navApply">New Application</a>
-                <a class="nav-link active" th:href="@{/alerts}" id="navAlerts">Alerts & Exceptions</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navAlertsContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navAlertsContent">
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link" th:href="@{/dashboard}" id="navDashboard">Dashboard</a>
+                    <a class="nav-link" th:href="@{/apply}" id="navApply">New Application</a>
+                    <a class="nav-link active" th:href="@{/alerts}" id="navAlerts">Alerts &amp; Exceptions</a>
+                </div>
+                <div class="navbar-nav ms-auto align-items-center">
+                    <span th:if="${currentUser != null}" class="badge bg-dark text-warning border border-warning me-3 px-3 py-2" id="adminRoleBadge">
+                        🛡️ <span th:text="${currentUser.fullName}">Admin</span> (Officer)
+                    </span>
+                    <a th:if="${currentUser != null}" th:href="@{/logout}" class="btn btn-outline-light btn-sm" id="logoutBtn">Logout</a>
+                    <div th:unless="${currentUser != null}" class="d-flex gap-2">
+                        <a th:href="@{/login}" class="btn btn-outline-light btn-sm" id="navLoginBtn">🔑 Login</a>
+                        <a th:href="@{/register}" class="btn btn-primary btn-sm" id="navRegisterBtn">Register</a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="container pb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h2 class="fw-bold text-danger mb-1" id="alertsHeading">⚠️ Alerts & Exception Management</h2>
-                <p class="text-muted mb-0">High-priority review queue: applications rejected or requiring credit committee review.</p>
+                <h2 class="fw-bold text-danger mb-1" id="alertsHeading">⚠️ Alerts &amp; Exception Management</h2>
+                <p class="text-muted mb-0">
+                    High-priority review queue: applications manually rejected or auto-flagged by the SBI Risk Engine as HIGH_RISK_EXCEPTION.
+                </p>
             </div>
-            <div>
-                <span class="badge bg-danger fs-6 p-2" th:text="${#lists.size(rejectedLoans)} + ' Active Exceptions'" id="exceptionsCountBadge">0 Active Exceptions</span>
+            <div class="text-end">
+                <span class="badge bg-danger fs-6 p-2 d-block mb-1"
+                      th:text="${#lists.size(rejectedLoans)} + ' Total Exceptions'" id="exceptionsCountBadge">0 Total Exceptions</span>
+                <small class="text-muted">
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                          th:text="${rejectedCount} + ' Rejected'">0 Rejected</span>
+                    &nbsp;
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle"
+                          th:text="${highRiskCount} + ' High Risk'">0 High Risk</span>
+                </small>
             </div>
+        </div>
+
+        <!-- SBI Rule Reminder -->
+        <div class="alert alert-warning py-2 px-3 small mb-4">
+            <strong>🏛️ SBI Underwriting Rules:</strong>
+            Applications are auto-flagged as <strong>HIGH_RISK_EXCEPTION</strong> when:
+            CIBIL &lt; 650 | FOIR &gt; 50% | Age &lt; 21 or &gt; 60 | Income &lt; ₹20,000/month.
         </div>
 
         <div class="card card-custom p-4">
@@ -42,7 +77,10 @@
                             <th>Applicant Name</th>
                             <th>Category</th>
                             <th>Requested Amount</th>
+                            <th>SBI Risk Tag</th>
                             <th>Exception / Rejection Reason</th>
+                            <th>FOIR</th>
+                            <th>CIBIL</th>
                             <th>Flagged Date</th>
                             <th>Action</th>
                         </tr>
@@ -52,19 +90,44 @@
                             <td class="fw-bold text-danger" th:text="${loan.applicationId}">LOAN-1002</td>
                             <td th:text="${loan.applicantName}">Sarah Connor</td>
                             <td th:text="${loan.loanType}">HOME</td>
-                            <td class="fw-bold" th:text="'$' + ${#numbers.formatDecimal(loan.loanAmount, 1, 2)}">$120,000.00</td>
+                            <td class="fw-bold" th:text="'₹' + ${#numbers.formatDecimal(loan.loanAmount, 1, 2)}">₹5,00,000</td>
                             <td>
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" 
-                                      th:text="${loan.rejectionReason != null ? loan.rejectionReason : 'Manual Exception Flag'}">Low Credit Score</span>
+                                <span class="badge"
+                                      th:classappend="${loan.sbiEligibilityTag != null ? 'tag-' + loan.sbiEligibilityTag : 'bg-secondary'}"
+                                      th:text="${loan.sbiEligibilityTag != null ? loan.sbiEligibilityTag : loan.currentStatus}">
+                                    HIGH_RISK_EXCEPTION
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"
+                                      th:text="${loan.rejectionReason != null ? loan.rejectionReason : 'Auto-flagged by SBI Risk Engine'}">
+                                    Low Credit Score
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${loan.calculatedFoir != null}"
+                                      th:text="${#numbers.formatDecimal(loan.calculatedFoir, 1, 1)} + '%'"
+                                      th:class="${loan.calculatedFoir > 50 ? 'text-danger fw-bold' : 'text-success'}">
+                                    35.0%
+                                </span>
+                                <span th:unless="${loan.calculatedFoir != null}" class="text-muted">N/A</span>
+                            </td>
+                            <td>
+                                <span th:if="${loan.cibilScore != null}"
+                                      th:text="${loan.cibilScore}"
+                                      th:class="${loan.cibilScore < 650 ? 'text-danger fw-bold' : (loan.cibilScore < 750 ? 'text-warning fw-bold' : 'text-success')}">
+                                    620
+                                </span>
+                                <span th:unless="${loan.cibilScore != null}" class="text-muted">N/A</span>
                             </td>
                             <td th:text="${#temporals.format(loan.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-10-13</td>
                             <td>
-                                <a th:href="@{/loans/{id}(id=${loan.id})}" class="btn btn-sm btn-outline-danger" 
+                                <a th:href="@{/loans/{id}(id=${loan.id})}" class="btn btn-sm btn-outline-danger"
                                    th:id="'viewAlertBtn_' + ${loan.applicationId}">Review Case</a>
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(rejectedLoans)}">
-                            <td colspan="7" class="text-center text-muted py-4" id="emptyAlertsRow">
+                            <td colspan="10" class="text-center text-muted py-4" id="emptyAlertsRow">
                                 ✅ No rejected loans or active exceptions found. All applications are in healthy stages.
                             </td>
                         </tr>

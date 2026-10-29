@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Loan Application Tracking Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #0d1b2a, #1b263b, #415a77); min-height: 100vh; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        .auth-card { border: none; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); background-color: #ffffff; }
+        .brand-header { color: #ffffff; text-align: center; margin-bottom: 25px; }
+        .nav-pills .nav-link { font-weight: 600; border-radius: 8px; color: #495057; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; color: #ffffff; }
+        .quick-btn { border-radius: 8px; font-weight: 500; font-size: 0.9rem; }
+    </style>
+</head>
+<body class="d-flex align-items-center py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+
+                <!-- Brand Header -->
+                <div class="brand-header">
+                    <h2 class="fw-bold mb-1">🏦 LoanTrack Portal</h2>
+                    <p class="text-white-50">Enterprise Retail Loan Processing & Tracking System</p>
+                </div>
+
+                <!-- Messages -->
+                <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert" id="authErrorAlert">
+                    <span th:text="${errorMessage}">Error message</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert" id="authSuccessAlert">
+                    <span th:text="${successMessage}">Success message</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div th:if="${infoMessage}" class="alert alert-info alert-dismissible fade show" role="alert" id="authInfoAlert">
+                    <span th:text="${infoMessage}">Info message</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <!-- Main Login Card -->
+                <div class="card auth-card p-4">
+                    <ul class="nav nav-pills nav-fill mb-4" id="loginTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="user-tab" data-bs-toggle="pill" data-bs-target="#user-panel" type="button" role="tab">
+                                👤 End User / Applicant
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="admin-tab" data-bs-toggle="pill" data-bs-target="#admin-panel" type="button" role="tab">
+                                🛡️ Admin / Loan Officer
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="loginTabContent">
+                        <!-- USER LOGIN PANEL -->
+                        <div class="tab-pane fade show active" id="user-panel" role="tabpanel">
+                            <div class="mb-3">
+                                <h5 class="fw-bold text-primary mb-1">Borrower Portal Login</h5>
+                                <p class="text-muted small">Fill loan applications and track your approval status in real-time.</p>
+                            </div>
+
+                            <form th:action="@{/login}" method="post" id="userLoginForm">
+                                <input type="hidden" name="roleHint" value="USER">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label fw-semibold">Username or Email</label>
+                                    <input type="text" class="form-control" id="username" name="username" placeholder="e.g. user or rahul.sharma@example.com" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="password" class="form-label fw-semibold">Password</label>
+                                    <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                                </div>
+                                <div class="d-grid mb-3">
+                                    <button type="submit" class="btn btn-primary fw-bold py-2" id="loginBtn">Log In as Applicant &rarr;</button>
+                                </div>
+                            </form>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted small">Don't have an account?</span>
+                                <a th:href="@{/register}" class="btn btn-sm btn-outline-primary" id="registerLink">Create New Account</a>
+                            </div>
+
+                            <hr>
+                            <div class="bg-light p-3 rounded">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="small fw-bold d-block text-dark">Demo Applicant Credentials:</span>
+                                        <span class="small text-muted">User: <code>user</code> | Pass: <code>user123</code></span>
+                                    </div>
+                                    <a th:href="@{/quick-login/user}" class="btn btn-sm btn-success quick-btn" id="quickLoginUserBtn">⚡ 1-Click Login</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ADMIN LOGIN PANEL -->
+                        <div class="tab-pane fade" id="admin-panel" role="tabpanel">
+                            <div class="mb-3">
+                                <h5 class="fw-bold text-dark mb-1">Underwriter / Admin Console</h5>
+                                <p class="text-muted small">Manage all applications, advance approval stages, and review exceptions.</p>
+                            </div>
+
+                            <form th:action="@{/login}" method="post" id="adminLoginForm">
+                                <input type="hidden" name="roleHint" value="ADMIN">
+                                <div class="mb-3">
+                                    <label for="adminUsername" class="form-label fw-semibold">Officer Username</label>
+                                    <input type="text" class="form-control" id="adminUsername" name="username" placeholder="e.g. admin" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="adminPassword" class="form-label fw-semibold">Password</label>
+                                    <input type="password" class="form-control" id="adminPassword" name="password" placeholder="Enter officer password" required>
+                                </div>
+                                <div class="d-grid mb-3">
+                                    <button type="submit" class="btn btn-dark fw-bold py-2" id="adminLoginBtn">Log In as Administrator &rarr;</button>
+                                </div>
+                            </form>
+
+                            <hr>
+                            <div class="bg-light p-3 rounded">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="small fw-bold d-block text-dark">Demo Officer Credentials:</span>
+                                        <span class="small text-muted">User: <code>admin</code> | Pass: <code>admin123</code></span>
+                                    </div>
+                                    <a th:href="@{/quick-login/admin}" class="btn btn-sm btn-dark quick-btn" id="quickLoginAdminBtn">⚡ 1-Click Login</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <a th:href="@{/dashboard}" class="text-muted small text-decoration-none">&larr; Continue as Guest / Public View</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
