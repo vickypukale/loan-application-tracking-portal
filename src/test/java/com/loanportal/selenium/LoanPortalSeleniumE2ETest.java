@@ -74,6 +74,21 @@ public class LoanPortalSeleniumE2ETest {
         }
     }
 
+    private void loginAsAdmin() {
+        driver.get(baseUrl + "/quick-login/admin");
+        wait.until(ExpectedConditions.urlContains("/dashboard"));
+    }
+
+    private void loginAsUser() {
+        driver.get(baseUrl + "/quick-login/user");
+        wait.until(ExpectedConditions.urlContains("/my-applications"));
+    }
+
+    private void logout() {
+        driver.get(baseUrl + "/logout");
+        wait.until(ExpectedConditions.urlContains("/login"));
+    }
+
     // ============================================================
     // Original E2E Journey Tests (preserved & enhanced)
     // ============================================================
@@ -82,6 +97,7 @@ public class LoanPortalSeleniumE2ETest {
     @Order(1)
     @DisplayName("Journey 1: Submit new loan application and verify on dashboard")
     void testJourney1_SubmitApplication_AppearsOnDashboard() {
+        loginAsAdmin();
         driver.get(baseUrl + "/apply");
 
         WebElement pageTitle = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("pageTitle")));
@@ -125,6 +141,7 @@ public class LoanPortalSeleniumE2ETest {
     @Order(2)
     @DisplayName("Journey 2: Search filter displays matching records and reset works")
     void testJourney2_SearchFilter_FindsMatchingApplication() {
+        loginAsAdmin();
         driver.get(baseUrl + "/dashboard");
 
         WebElement searchBox = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("searchBox")));
@@ -146,6 +163,7 @@ public class LoanPortalSeleniumE2ETest {
     @Order(3)
     @DisplayName("Journey 3: Status drill-down and advance stage to DOCUMENT_VERIFIED")
     void testJourney3_DrillDownTimeline_AdvanceStatus() {
+        loginAsAdmin();
         driver.get(baseUrl + "/dashboard");
 
         WebElement drillDownBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(@id, 'viewDetailsBtn_')]")));
@@ -173,6 +191,7 @@ public class LoanPortalSeleniumE2ETest {
     @Order(4)
     @DisplayName("Journey 4: Reject application and verify routing into Alerts View")
     void testJourney4_RejectApplication_RoutesToAlertsView() {
+        loginAsAdmin();
         driver.get(baseUrl + "/dashboard");
 
         WebElement drillDownBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(@id, 'viewDetailsBtn_')]")));
@@ -206,6 +225,7 @@ public class LoanPortalSeleniumE2ETest {
     @Order(5)
     @DisplayName("SBI Journey A (Eligible): CIBIL=800, low FOIR → PRE_APPROVED tag on details page")
     void testSbiJourneyA_EligibleApplicant_PreApprovedTag() {
+        loginAsAdmin();
         driver.get(baseUrl + "/apply");
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("pageTitle")));
@@ -265,6 +285,7 @@ public class LoanPortalSeleniumE2ETest {
     @Order(6)
     @DisplayName("SBI Journey B (Ineligible): CIBIL=580 → HIGH_RISK_EXCEPTION, routes to Alerts queue")
     void testSbiJourneyB_IneligibleApplicant_HighRiskRoutedToAlerts() {
+        loginAsAdmin();
         driver.get(baseUrl + "/apply");
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("pageTitle")));
@@ -325,6 +346,7 @@ public class LoanPortalSeleniumE2ETest {
     @DisplayName("Journey 7: End-User (Applicant) Login, submit application, and view personal status & timeline")
     void testJourney7_EndUserLogin_SubmitAndTrackStatus() {
         // 1. Visit Login page and log in as End User
+        logout();
         driver.get(baseUrl + "/login");
         WebElement userTab = wait.until(ExpectedConditions.elementToBeClickable(By.id("user-tab")));
         safeClick(userTab);
@@ -338,6 +360,12 @@ public class LoanPortalSeleniumE2ETest {
         WebElement welcomeHeading = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("applicantWelcomeHeading")));
         assertTrue(welcomeHeading.getText().contains("Rahul Sharma"),
                 "User portal should welcome the logged-in applicant by name");
+
+        // Assert that Admin Dashboard and Alerts tabs are NOT shown to End User
+        assertTrue(driver.findElements(By.id("navDashboard")).isEmpty(),
+                "End user navbar must NOT show Admin Dashboard tab");
+        assertTrue(driver.findElements(By.id("navAlerts")).isEmpty(),
+                "End user navbar must NOT show Alerts tab");
 
         // 3. Click Apply for New Loan from User Portal
         WebElement applyBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("applyNewLoanBtn")));
@@ -390,6 +418,7 @@ public class LoanPortalSeleniumE2ETest {
     @DisplayName("Journey 8: Admin (Officer) Login, manage all applications, and update application stage")
     void testJourney8_AdminLogin_ManageApplicationsAndUpdateStage() {
         // 1. Visit Login page and log in as Admin
+        logout();
         driver.get(baseUrl + "/login");
         WebElement adminTab = wait.until(ExpectedConditions.elementToBeClickable(By.id("admin-tab")));
         safeClick(adminTab);
@@ -430,6 +459,45 @@ public class LoanPortalSeleniumE2ETest {
 
         // 6. Clean up: Log out
         safeClick(driver.findElement(By.id("logoutBtn")));
+        wait.until(ExpectedConditions.urlContains("/login"));
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("Journey 9: Before login, unauthenticated visitor cannot access dashboard, apply, or alerts tabs")
+    void testJourney9_UnauthenticatedAccess_BlockedAndNoTabsShown() {
+        driver.get(baseUrl + "/logout");
+        wait.until(ExpectedConditions.urlContains("/login"));
+
+        // 1. Assert that login page has NO internal app navigation tabs or loan content
+        assertTrue(driver.findElements(By.id("navDashboard")).isEmpty(),
+                "Unauthenticated login page must NOT show Dashboard tab");
+        assertTrue(driver.findElements(By.id("navMyApplications")).isEmpty(),
+                "Unauthenticated login page must NOT show My Applications tab");
+        assertTrue(driver.findElements(By.id("navAlerts")).isEmpty(),
+                "Unauthenticated login page must NOT show Alerts tab");
+        assertTrue(driver.findElements(By.id("applicationsTable")).isEmpty(),
+                "Unauthenticated login page must NOT show loan records table");
+        assertTrue(driver.findElements(By.id("kpiIndicatorsRow")).isEmpty(),
+                "Unauthenticated login page must NOT show KPI indicator cards");
+
+        // 2. Direct attempt to access /dashboard must redirect to /login
+        driver.get(baseUrl + "/dashboard");
+        wait.until(ExpectedConditions.urlContains("/login"));
+        WebElement errorAlert = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("authErrorAlert")));
+        assertTrue(errorAlert.getText().contains("Please log in"),
+                "Redirected page must require login");
+
+        // 3. Direct attempt to access /apply must redirect to /login
+        driver.get(baseUrl + "/apply");
+        wait.until(ExpectedConditions.urlContains("/login"));
+
+        // 4. Direct attempt to access /alerts must redirect to /login
+        driver.get(baseUrl + "/alerts");
+        wait.until(ExpectedConditions.urlContains("/login"));
+
+        // 5. Direct attempt to access /my-applications must redirect to /login
+        driver.get(baseUrl + "/my-applications");
         wait.until(ExpectedConditions.urlContains("/login"));
     }
 }

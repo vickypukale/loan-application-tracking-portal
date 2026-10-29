@@ -27,14 +27,10 @@
                     <a class="nav-link active" th:href="@{/alerts}" id="navAlerts">Alerts &amp; Exceptions</a>
                 </div>
                 <div class="navbar-nav ms-auto align-items-center">
-                    <span th:if="${currentUser != null}" class="badge bg-dark text-warning border border-warning me-3 px-3 py-2" id="adminRoleBadge">
+                    <span class="badge bg-dark text-warning border border-warning me-3 px-3 py-2" id="adminRoleBadge">
                         🛡️ <span th:text="${currentUser.fullName}">Admin</span> (Officer)
                     </span>
-                    <a th:if="${currentUser != null}" th:href="@{/logout}" class="btn btn-outline-light btn-sm" id="logoutBtn">Logout</a>
-                    <div th:unless="${currentUser != null}" class="d-flex gap-2">
-                        <a th:href="@{/login}" class="btn btn-outline-light btn-sm" id="navLoginBtn">🔑 Login</a>
-                        <a th:href="@{/register}" class="btn btn-primary btn-sm" id="navRegisterBtn">Register</a>
-                    </div>
+                    <a th:href="@{/logout}" class="btn btn-outline-light btn-sm" id="logoutBtn">Logout</a>
                 </div>
             </div>
         </div>

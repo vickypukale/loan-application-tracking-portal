@@ -28,16 +28,24 @@ public class LoanController {
     @GetMapping({"/", "/dashboard"})
     public String viewDashboard(@RequestParam(value = "search", required = false) String search,
                                 HttpSession session,
+                                RedirectAttributes redirectAttributes,
                                 Model model) {
         User currentUser = getCurrentUser(session);
 
+        // Strict Access Control: Unauthenticated visitors cannot access dashboard or applications
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please log in to access the portal.");
+            return "redirect:/login";
+        }
+
         // If logged in as regular applicant (End User), route directly to personal applications portal
-        if (currentUser != null && currentUser.isUser()) {
+        if (currentUser.isUser()) {
             return "redirect:/my-applications";
         }
 
+        // Admin view
         model.addAttribute("currentUser", currentUser);
-        model.addAttribute("isAdmin", currentUser != null && currentUser.isAdmin());
+        model.addAttribute("isAdmin", true);
         model.addAttribute("applications", loanService.searchApplications(search));
         model.addAttribute("searchQuery", search != null ? search : "");
         model.addAttribute("totalCount", loanService.countTotal());
@@ -51,7 +59,7 @@ public class LoanController {
     }
 
     /**
-     * Dedicated End-User Portal: Borrowers view and track their own applications.
+     * Dedicated End-User Portal: Borrowers view and track their own applications only.
      */
     @GetMapping("/my-applications")
     public String viewMyApplications(@RequestParam(value = "search", required = false) String search,
@@ -64,7 +72,7 @@ public class LoanController {
             return "redirect:/login";
         }
 
-        // If an admin accidentally accesses /my-applications, route to the full admin dashboard
+        // If an admin accesses /my-applications, route to the full admin dashboard
         if (currentUser.isAdmin()) {
             return "redirect:/dashboard";
         }
@@ -81,12 +89,15 @@ public class LoanController {
     }
 
     @GetMapping("/apply")
-    public String showApplyForm(HttpSession session, Model model) {
+    public String showApplyForm(HttpSession session, RedirectAttributes redirectAttributes, Model model) {
         User currentUser = getCurrentUser(session);
-        LoanApplication app = new LoanApplication();
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please log in to fill and submit a loan application.");
+            return "redirect:/login";
+        }
 
-        // If an applicant is logged in, auto-fill applicant information
-        if (currentUser != null) {
+        LoanApplication app = new LoanApplication();
+        if (currentUser.isUser()) {
             app.setApplicantName(currentUser.getFullName());
             app.setEmail(currentUser.getEmail());
             app.setPhone(currentUser.getPhone());
@@ -102,10 +113,12 @@ public class LoanController {
                                     HttpSession session,
                                     RedirectAttributes redirectAttributes) {
         User currentUser = getCurrentUser(session);
-        if (currentUser != null) {
-            application.setApplicantUser(currentUser);
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Session expired. Please log in to submit application.");
+            return "redirect:/login";
         }
 
+        application.setApplicantUser(currentUser);
         LoanApplication created = loanService.createApplication(application);
         String message = "Loan Application registered successfully! Generated Application ID: "
                 + created.getApplicationId();
@@ -118,8 +131,7 @@ public class LoanController {
         }
         redirectAttributes.addFlashAttribute("successMessage", message);
 
-        // If an applicant is logged in, redirect them to their personal application tracking view
-        if (currentUser != null && currentUser.isUser()) {
+        if (currentUser.isUser()) {
             return "redirect:/my-applications";
         }
         return "redirect:/dashboard";
@@ -130,10 +142,14 @@ public class LoanController {
                                   HttpSession session,
                                   RedirectAttributes redirectAttributes,
                                   Model model) {
+        User currentUser = getCurrentUser(session);
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please log in to view application details.");
+            return "redirect:/login";
+        }
+
         LoanApplication loan = loanService.getApplicationById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid loan ID: " + id));
-
-        User currentUser = getCurrentUser(session);
 
         // Security check: ensure regular applicant can only view their own loan
         if (!loanService.canUserViewLoan(currentUser, loan)) {
@@ -141,7 +157,7 @@ public class LoanController {
             return "redirect:/my-applications";
         }
 
-        boolean canUpdate = (currentUser == null || currentUser.isAdmin());
+        boolean canUpdate = currentUser.isAdmin();
 
         model.addAttribute("loan", loan);
         model.addAttribute("currentUser", currentUser);
@@ -159,9 +175,13 @@ public class LoanController {
                                    HttpSession session,
                                    RedirectAttributes redirectAttributes) {
         User currentUser = getCurrentUser(session);
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please log in to perform this action.");
+            return "redirect:/login";
+        }
 
         // Guard: End users cannot update loan statuses
-        if (currentUser != null && currentUser.isUser()) {
+        if (!currentUser.isAdmin()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Access Denied: Only bank administrators and loan officers can update application statuses.");
             return "redirect:/loans/" + id;
         }
@@ -179,9 +199,13 @@ public class LoanController {
     @GetMapping("/alerts")
     public String viewAlerts(HttpSession session, RedirectAttributes redirectAttributes, Model model) {
         User currentUser = getCurrentUser(session);
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please log in to access the alerts and exceptions queue.");
+            return "redirect:/login";
+        }
 
         // Guard: End users cannot view bank alerts/exceptions queue
-        if (currentUser != null && currentUser.isUser()) {
+        if (!currentUser.isAdmin()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Access Denied: Alerts and Underwriting Exceptions are restricted to bank loan officers.");
             return "redirect:/my-applications";
         }
